@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connections Game</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>Connections Game</h1>
+    <p id="instructions">Find groups of four items that share something in common!</p>
+
+    <div id="attempts-container">
+        Mistakes remaining: <span id="attempts-left">4</span>
+        <div id="attempt-circles">
+            <span></span><span></span><span></span><span></span>
+        </div>
+    </div>
+
+    <div id="solved-groups-area">
+        <!-- Solved groups will be rendered here -->
+    </div>
+
+    <div id="active-grid-area">
+        <!-- Word buttons will be loaded here -->
+    </div>
+
+    <div id="message-area"></div>
+
+    <div id="button-container">
+        <button id="shuffle-button">Shuffle</button>
+        <button id="deselect-all-button">Deselect All</button>
+        <button id="submit-guess" disabled>Submit</button>
+    </div>
+
+    <!-- Lose Overlay (Initially Hidden) -->
+    <div id="lose-overlay" class="hidden">
+        <div class="lose-content">:(</div>
+    </div>
+
+    <!-- Confetti Library (for fireworks) -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- Your game script -->
+    <script src="script.js"></script>
+</body>
+</html>
