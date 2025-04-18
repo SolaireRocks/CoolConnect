@@ -21,51 +21,51 @@
       "difficulty": 3
     }
   ],
-  "2024-07-29": [
+  "2025-04-19": [
     {
-      "category": "MUSICAL INSTRUMENTS",
-      "words": ["GUITAR", "PIANO", "DRUMS", "VIOLIN"],
+      "category": "THINGS THAT PANDA HATES",
+      "words": ["EVAN", "DAD", "MEAT", "BOARD"],
       "difficulty": 0
     },
     {
-      "category": "TYPES OF WEATHER",
-      "words": ["RAIN", "SUN", "SNOW", "WIND"],
+      "category": "THINGS THAT PANDA LIKES",
+      "words": ["BITEY", "ESTI", "KITTIES", "DICE TRAY"],
       "difficulty": 1
     },
     {
-      "category": "PARTS OF A COMPUTER",
-      "words": ["MOUSE", "KEYBOARD", "MONITOR", "TOWER"],
+      "category": "FAVORITE GAMES",
+      "words": ["ANIMAL CROSSING", "BOGGLE", "MARIO", "CARDS"],
       "difficulty": 2
     },
     {
-      "category": "FOUND IN A KITCHEN",
-      "words": ["SINK", "OVEN", "FORK", "PLATE"],
+      "category": "TAYLOR SWIFT SONGS",
+      "words": ["MASTERMIND", "BLANK SPACE", "HAUNTED", "WONDERLAND"],
       "difficulty": 3
     }
   ],
-  "2024-07-30": [
-    {
-      "category": "FRUITS",
-      "words": ["APPLE", "BANANA", "ORANGE", "GRAPE"],
-      "difficulty": 0
-    },
-    {
-      "category": "COLORS",
-      "words": ["RED", "BLUE", "GREEN", "YELLOW"],
-      "difficulty": 1
-    },
-    {
-      "category": "FARM ANIMALS",
-      "words": ["COW", "PIG", "CHICKEN", "SHEEP"],
-      "difficulty": 2
-    },
-    {
-      "category": "THINGS THAT FLY",
-      "words": ["BIRD", "PLANE", "KITE", "BAT"],
-      "difficulty": 3
-    }
-  ],
-  "2024-07-31": [
+"2025-04-20": [
+  {
+    "category": "HIGH, SLANG",
+    "words": ["BAKED", "BLAZED", "LIFTED", "STONED"],
+    "difficulty": 0
+  },
+  {
+    "category": "WAYS TO SMOKE MARIJUANA",
+    "words": ["BONG", "BOWL", "JOINT", "PIPE"],
+    "difficulty": 1
+  },
+  {
+    "category": "CANNABIS STRAIN DESCRIPTORS",
+    "words": ["DIESEL", "HAZE", "KUSH", "INDICA"],
+    "difficulty": 2
+  },
+  {
+    "category": "WORDS WITH 'WEED'",
+    "words": ["SKUNK", "KILLER", "MILK", "SEA"],
+    "difficulty": 3
+  }
+]
+  "2025-04-21": [
     {
       "category": "PLANETS",
       "words": ["MERCURY", "VENUS", "EARTH", "MARS"],
@@ -87,7 +87,7 @@
       "difficulty": 3
     }
   ],
-  "2024-08-01": [
+  "2025-04-22": [
      {
       "category": "FISH",
       "words": ["SALMON", "TUNA", "TROUT", "COD"],
@@ -109,7 +109,7 @@
       "difficulty": 3
     }
   ],
-   "2024-08-02": [
+   "2025-04-23": [
      {
       "category": "DOG BREEDS",
       "words": ["LABRADOR", "POODLE", "BEAGLE", "PUG"],
@@ -131,7 +131,7 @@
       "difficulty": 3
     }
   ],
-   "2024-08-03": [
+   "2025-04-24": [
      {
       "category": "TYPES OF TREES",
       "words": ["OAK", "MAPLE", "PINE", "BIRCH"],
