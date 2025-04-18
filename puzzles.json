@@ -1,5 +1,5 @@
 {
-  "Sunday": [
+  "2024-07-28": [
     {
       "category": "SWEET SPREADS",
       "words": ["JAM", "MARMALADE", "JELLY", "PRESERVES"],
@@ -21,7 +21,7 @@
       "difficulty": 3
     }
   ],
-  "Monday": [
+  "2024-07-29": [
     {
       "category": "MUSICAL INSTRUMENTS",
       "words": ["GUITAR", "PIANO", "DRUMS", "VIOLIN"],
@@ -43,7 +43,7 @@
       "difficulty": 3
     }
   ],
-  "Tuesday": [
+  "2024-07-30": [
     {
       "category": "FRUITS",
       "words": ["APPLE", "BANANA", "ORANGE", "GRAPE"],
@@ -65,7 +65,7 @@
       "difficulty": 3
     }
   ],
-  "Wednesday": [
+  "2024-07-31": [
     {
       "category": "PLANETS",
       "words": ["MERCURY", "VENUS", "EARTH", "MARS"],
@@ -87,7 +87,7 @@
       "difficulty": 3
     }
   ],
-  "Thursday": [
+  "2024-08-01": [
      {
       "category": "FISH",
       "words": ["SALMON", "TUNA", "TROUT", "COD"],
@@ -109,7 +109,7 @@
       "difficulty": 3
     }
   ],
-   "Friday": [
+   "2024-08-02": [
      {
       "category": "DOG BREEDS",
       "words": ["LABRADOR", "POODLE", "BEAGLE", "PUG"],
@@ -131,7 +131,7 @@
       "difficulty": 3
     }
   ],
-   "Saturday": [
+   "2024-08-03": [
      {
       "category": "TYPES OF TREES",
       "words": ["OAK", "MAPLE", "PINE", "BIRCH"],
