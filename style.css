@@ -190,7 +190,8 @@ h1 {
 /* MODIFIED HOVER: Slight change only */
 #submit-guess:hover:not([disabled]) {
     background-color: #4e4e4e; /* Slightly darker grey */
-    border-color: #4a4a4a;
+    color: black;
+	border-color: #4a4a4a;
 }
 #submit-guess:disabled {
     /* Disabled style */
