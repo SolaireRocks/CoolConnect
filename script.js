@@ -15,34 +15,37 @@ document.addEventListener('DOMContentLoaded', () => {
     const MAX_SELECTED = 4;
     const TOTAL_ATTEMPTS = 4;
     const PUZZLE_FILE = 'puzzles.json';
-    const LOSE_FACE_DURATION = 2000; // How long the frowny face stays (in ms)
-    const MESSAGE_CLEAR_DELAY = 1500; // How long messages stay before clearing
+    const LOSE_FACE_DURATION = 2000;
+    const MESSAGE_CLEAR_DELAY = 1500;
 
     // --- Game State Variables ---
-    let selectedWords = [];         // Words currently selected by the user
-    let wordElements = {};          // Map word -> button element
-    let currentPuzzleData = null;   // { groups: [], date: "YYYY-MM-DD" }
+    let selectedWords = [];
+    let wordElements = {};
+    let currentPuzzleData = null; // { groups: [], date: "YYYY-MM-DD" }
     let remainingAttempts = TOTAL_ATTEMPTS;
-    let solvedGroups = [];          // Array of correctly guessed group objects
-    let incorrectGuesses = new Set(); // Stores stringified, sorted incorrect guesses
-    let isGameOver = false;         // Flag to prevent actions after game end
-    let messageTimeoutId = null;    // To clear previous message timeouts
+    let solvedGroups = [];
+    let incorrectGuesses = new Set(); // Still needed for "Already Guessed" feature
+    let isGameOver = false;
+    let messageTimeoutId = null;
 
     // --- Local Storage Key ---
+    // Still used for saving/loading game progress (attempts, solved groups etc.)
     function getStorageKey(dateStr) {
         return `connectionsGameState_${dateStr}`;
     }
 
     // --- Date Formatting ---
+    // Still needed for puzzle loading and potentially GA event labels
     function getTodayDateString() {
         const today = new Date();
         const year = today.getFullYear();
-        const month = String(today.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+        const month = String(today.getMonth() + 1).padStart(2, '0');
         const day = String(today.getDate()).padStart(2, '0');
         return `${year}-${month}-${day}`;
     }
 
-    // --- Local Storage Functions ---
+    // --- Local Storage Functions (for game state persistence) ---
+    // Keep these as they are for saving user's progress locally
     function saveGameState() {
         if (!currentPuzzleData || !currentPuzzleData.date) return;
 
@@ -54,14 +57,15 @@ document.addEventListener('DOMContentLoaded', () => {
             attempts: remainingAttempts,
             solvedCategories: solvedGroups.map(g => g.category),
             gridWords: currentGridWords,
-            incorrectGuesses: Array.from(incorrectGuesses), // Convert Set to Array for JSON
+            incorrectGuesses: Array.from(incorrectGuesses),
             isGameOver: isGameOver,
             isWin: isGameOver ? (solvedGroups.length === 4) : null,
         };
 
         try {
+            // Only save if localStorage is available and working
             localStorage.setItem(getStorageKey(currentPuzzleData.date), JSON.stringify(stateToSave));
-            console.log("Game state saved for", currentPuzzleData.date);
+            // console.log("Game state saved for", currentPuzzleData.date); // Optional: Keep for debugging
         } catch (error) {
             console.error("Error saving game state to localStorage:", error);
         }
@@ -74,10 +78,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (savedStateJSON) {
                 const savedState = JSON.parse(savedStateJSON);
                 if (savedState && savedState.puzzleDate === dateStr) {
-                    console.log("Found saved game state for", dateStr);
+                    // console.log("Found saved game state for", dateStr); // Optional: Keep for debugging
                     return savedState;
                 } else {
-                    console.log("Saved state found, but for a different date. Ignoring.");
+                    // console.log("Saved state found, but for a different date. Ignoring."); // Optional: Keep for debugging
                     localStorage.removeItem(key);
                 }
             }
@@ -109,6 +113,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     initializeGame(false);
                 }
+
+                // --- GA Event: Game Start ---
+                // Send event after puzzle is confirmed loaded for *today*
+                // This helps GA track sessions engaging with the *current* puzzle
+                 if (currentPuzzleData && currentPuzzleData.date === getTodayDateString() && !savedState?.isGameOver) {
+                    // Check if gtag function exists (added by the GA snippet)
+                     if (typeof gtag === 'function') {
+                         gtag('event', 'game_load_today', { // Use a descriptive event name
+                           'event_category': 'Game',
+                           'event_label': currentPuzzleData.date // Track which puzzle date loaded
+                         });
+                         console.log("GA Event: game_load_today sent");
+                     } else {
+                         console.warn("gtag function not found for game_load_today event.");
+                     }
+                 }
+                // --- End GA Event ---
+
+
             } else {
                 console.warn("Puzzle data for", todayStr, "not found or is invalid in puzzles.json.");
                 handleLoadError("No puzzle found for today.");
@@ -157,14 +180,16 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!isRestoring) {
             saveGameState();
         }
+
+         // NOTE: The GA 'game_load_today' event is now triggered in loadPuzzleForToday
+         // after confirming the puzzle is valid for the current date.
     }
 
     function restoreGameFromState(savedState) {
         console.log("Restoring game from saved state:", savedState);
         isGameOver = savedState.isGameOver;
         remainingAttempts = savedState.attempts;
-        incorrectGuesses = new Set(savedState.incorrectGuesses || []); // Restore incorrect guesses
-
+        incorrectGuesses = new Set(savedState.incorrectGuesses || []);
         solvedGroups = currentPuzzleData.groups.filter(group =>
             savedState.solvedCategories.includes(group.category)
         );
@@ -189,7 +214,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                      removeAllButtonsFromGrid();
                 }
-                triggerFireworks();
+                // Optionally trigger fireworks again on reload if won?
+                // triggerFireworks();
             } else {
                  displayMessage("Game Over! Better luck next time.", "incorrect");
                  revealRemainingGroups();
@@ -203,6 +229,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
              });
         }
+         // NOTE: The GA 'game_load_today' event is now triggered in loadPuzzleForToday
     }
 
     function populateGrid(words) {
@@ -239,9 +266,8 @@ document.addEventListener('DOMContentLoaded', () => {
         submitButton.disabled = selectedWords.length !== MAX_SELECTED;
     }
 
-    // Helper to create a unique, sorted representation of a guess
     function getGuessId(selection) {
-        return [...selection].sort().join(','); // Sort alphabetically and join
+        return [...selection].sort().join(',');
     }
 
     function handleSubmitGuess() {
@@ -249,28 +275,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const submittedSelection = [...selectedWords];
         const selectedButtons = submittedSelection.map(word => wordElements[word]).filter(Boolean);
-
-        // --- Check for Repeated Guess ---
         const guessId = getGuessId(submittedSelection);
+
         if (incorrectGuesses.has(guessId)) {
             displayMessage("Already guessed!", "info");
             clearMessageWithDelay();
-            submitButton.disabled = true; // Disable submit until selection changes
-            // Shake buttons for feedback
+            submitButton.disabled = true;
             selectedButtons.forEach(button => {
                 if (button && !button.classList.contains('removing')) {
                     button.classList.add('shake');
                     setTimeout(() => { if(button) button.classList.remove('shake'); }, 300);
                 }
             });
-            return; // Stop processing this guess
+            return;
         }
 
-        // --- Process as New Guess ---
         const correctGroup = findCorrectGroup(submittedSelection);
 
         if (correctGroup) {
-             // --- Correct Guess ---
              displayMessage("Correct!", "correct");
              solvedGroups.push(correctGroup);
              solvedGroups.sort((a, b) => a.difficulty - b.difficulty);
@@ -282,15 +304,15 @@ document.addEventListener('DOMContentLoaded', () => {
              submitButton.disabled = true;
 
              if (solvedGroups.length === 4) {
-                 endGame(true);
+                 endGame(true); // This will call GA event inside endGame
              } else {
-                 saveGameState();
+                 saveGameState(); // Save progress
              }
         } else {
-            // --- Incorrect Guess ---
+            // Incorrect Guess
             remainingAttempts--;
             updateAttemptsDisplay();
-            incorrectGuesses.add(guessId); // Add this incorrect guess to the set
+            incorrectGuesses.add(guessId);
 
             let isOneAway = false;
             const unsolvedGroups = currentPuzzleData.groups.filter(group =>
@@ -317,13 +339,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
 
-             submitButton.disabled = true; // Disable submit until user changes selection
+             submitButton.disabled = true;
 
              if (remainingAttempts <= 0) {
-                endGame(false);
+                endGame(false); // This will call GA event inside endGame
             } else {
                  clearMessageWithDelay();
-                 saveGameState();
+                 saveGameState(); // Save progress
             }
         }
     }
@@ -364,7 +386,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const handleRemoval = () => {
                     button.remove();
                     buttonsAnimatedOut++;
-
                     if (buttonsAnimatedOut === totalToRemove && solvedGroups.length === 4 && !gridHidden) {
                        if (activeGridArea.querySelectorAll('.word-button:not(.removing)').length === 0) {
                             activeGridArea.classList.add('game-won-hidden');
@@ -381,11 +402,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
                  setTimeout(() => {
                      if (button.parentNode === activeGridArea) {
-                         console.warn(`Fallback removal for button: ${button.textContent}`);
                          handleRemoval();
                      }
                  }, 450);
-
                 delete wordElements[word];
             } else {
                  buttonsAnimatedOut++;
@@ -436,7 +455,6 @@ document.addEventListener('DOMContentLoaded', () => {
                   button.disabled = false;
               }
           });
-        // Submit button state depends on selection count, handled in handleWordClick/handleSubmitGuess
     }
 
     function endGame(isWin) {
@@ -445,6 +463,24 @@ document.addEventListener('DOMContentLoaded', () => {
         isGameOver = true;
         disableGameControls();
         activeGridArea.classList.add('game-over');
+
+        // --- GA Event: Game Win / Loss ---
+        const eventName = isWin ? 'game_win' : 'game_loss';
+        const eventData = {
+            'event_category': 'Game',
+            'event_label': currentPuzzleData?.date || 'unknown_date', // Use puzzle date if available
+             // Optional: Add attempts left on loss, or 0 on win
+            // 'value': isWin ? 0 : remainingAttempts
+        };
+
+        if (typeof gtag === 'function') {
+            gtag('event', eventName, eventData);
+            console.log(`GA Event: ${eventName} sent`);
+        } else {
+            console.warn(`gtag function not found for ${eventName} event.`);
+        }
+        // --- End GA Event ---
+
 
         if (isWin) {
             displayMessage("Congratulations! You found all groups!", "correct");
@@ -459,76 +495,29 @@ document.addEventListener('DOMContentLoaded', () => {
                  }, 500);
             }, LOSE_FACE_DURATION);
         }
-         saveGameState(); // Save final state
+         saveGameState(); // Save final game state locally
     }
 
-    // Function to trigger confetti fireworks
     function triggerFireworks() {
+        // Use the updated fireworks function from previous step
         if (typeof confetti !== 'function') {
              console.warn("Confetti function not found.");
              return;
          }
-
-        // --- Modifications Start ---
-
-        const duration = 8 * 1000; // INCREASED DURATION: 8 seconds
+        const duration = 8 * 1000;
         const animationEnd = Date.now() + duration;
+        const brightColors = ['#FF0000','#00FF00','#0000FF','#FFFF00','#FF00FF','#00FFFF','#FFA500','#FF4500','#ADFF2F','#FF69B4','#1E90FF'];
+        const defaults = { startVelocity: 45, spread: 360, ticks: 70, zIndex: 10, gravity: 0.8 };
 
-        // DEFINE VIBRANT COLORS: Add or change hex codes as desired
-        const brightColors = [
-            '#FF0000', // Red
-            '#00FF00', // Lime
-            '#0000FF', // Blue
-            '#FFFF00', // Yellow
-            '#FF00FF', // Magenta
-            '#00FFFF', // Cyan
-            '#FFA500', // Orange
-            '#FF4500', // OrangeRed
-            '#ADFF2F', // GreenYellow
-            '#FF69B4', // HotPink
-            '#1E90FF', // DodgerBlue
-        ];
-
-        const defaults = {
-            startVelocity: 45, // INCREASED VELOCITY: Particles shoot out faster
-            spread: 360,
-            ticks: 70,         // SLIGHTLY LONGER LASTING PARTICLES
-            zIndex: 10,
-            gravity: 0.8,      // SLIGHTLY LOWER GRAVITY: More floaty
-        };
-
-        // --- Modifications End ---
-
-
-        function randomInRange(min, max) {
-            return Math.random() * (max - min) + min;
-        }
+        function randomInRange(min, max) { return Math.random() * (max - min) + min; }
 
         const interval = setInterval(function() {
             const timeLeft = animationEnd - Date.now();
-
-            if (timeLeft <= 0) {
-                return clearInterval(interval);
-            }
-
-            // INCREASED PARTICLE COUNT BASE: Launch more particles per burst
+            if (timeLeft <= 0) return clearInterval(interval);
             const particleCount = 75 * (timeLeft / duration);
-
-            // Launch confetti bursts from two points
-            // Use the defined colors and add shapes
-            confetti(Object.assign({}, defaults, {
-                particleCount,
-                origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 },
-                colors: brightColors, // Use our vibrant color list
-                shapes: ['star', 'circle'], // Add stars and circles
-            }));
-            confetti(Object.assign({}, defaults, {
-                particleCount,
-                origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 },
-                colors: brightColors, // Use our vibrant color list
-                shapes: ['star', 'circle'], // Add stars and circles
-            }));
-        }, 250); // Interval between bursts remains the same
+            confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 }, colors: brightColors, shapes: ['star', 'circle'] }));
+            confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 }, colors: brightColors, shapes: ['star', 'circle'] }));
+        }, 250);
     }
 
     function revealRemainingGroups() {
@@ -560,21 +549,14 @@ document.addEventListener('DOMContentLoaded', () => {
      }
 
     function displayMessage(msg, type) {
-        if (messageTimeoutId) {
-            clearTimeout(messageTimeoutId);
-            messageTimeoutId = null;
-        }
+        if (messageTimeoutId) clearTimeout(messageTimeoutId);
         messageArea.textContent = msg;
         messageArea.className = 'message';
-        if (type) {
-            messageArea.classList.add(type);
-        }
+        if (type) messageArea.classList.add(type);
     }
 
     function clearMessageWithDelay() {
-        if (messageTimeoutId) {
-            clearTimeout(messageTimeoutId);
-        }
+        if (messageTimeoutId) clearTimeout(messageTimeoutId);
         messageTimeoutId = setTimeout(() => {
             if (!isGameOver || (messageArea.textContent !== "Congratulations! You found all groups!" && messageArea.textContent !== "Game Over! Better luck next time.")) {
                  displayMessage("", "");
@@ -618,18 +600,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const button = document.createElement('button');
             button.textContent = word;
             button.classList.add('word-button');
-            if (selectedWords.includes(word)) {
-                button.classList.add('selected');
-            }
-             button.addEventListener('click', handleWordClick);
-             fragment.appendChild(button);
-             newWordElements[word] = button;
+            if (selectedWords.includes(word)) button.classList.add('selected');
+            button.addEventListener('click', handleWordClick);
+            fragment.appendChild(button);
+            newWordElements[word] = button;
         });
 
         activeGridArea.appendChild(fragment);
         wordElements = newWordElements;
         submitButton.disabled = selectedWords.length !== MAX_SELECTED;
-        saveGameState();
+        saveGameState(); // Still save local state after shuffle
      }
 
     // --- Event Listeners ---
