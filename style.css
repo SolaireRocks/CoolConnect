@@ -68,10 +68,13 @@ h1 {
     padding: 15px;
     border-radius: 8px;
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    min-height: 240px; /* Adjusted min-height to better contain buttons */
-    transition: background-color 0.5s ease, padding 0.5s ease, min-height 0.5s ease, border 0.5s ease, box-shadow 0.5s ease, margin-bottom 0.5s ease, opacity 0.5s ease; /* Added transitions */
-    border: 1px solid #ddd; /* Start with a light border */
+    min-height: 240px;
+    transition: background-color 0.5s ease, padding 0.5s ease, min-height 0.5s ease, border 0.5s ease, box-shadow 0.5s ease, margin-bottom 0.5s ease, opacity 0.5s ease;
+    border: 1px solid #ddd;
     opacity: 1;
+    /* --- ADD THIS LINE --- */
+    align-items: start; /* Prevent items from stretching vertically */
+    /* --------------------- */
 }
 
 /* Style to hide the grid area when game is won */
