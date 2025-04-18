@@ -462,11 +462,43 @@ document.addEventListener('DOMContentLoaded', () => {
          saveGameState(); // Save final state
     }
 
+    // Function to trigger confetti fireworks
     function triggerFireworks() {
-        if (typeof confetti !== 'function') return;
-        const duration = 5 * 1000;
+        if (typeof confetti !== 'function') {
+             console.warn("Confetti function not found.");
+             return;
+         }
+
+        // --- Modifications Start ---
+
+        const duration = 8 * 1000; // INCREASED DURATION: 8 seconds
         const animationEnd = Date.now() + duration;
-        const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 10 };
+
+        // DEFINE VIBRANT COLORS: Add or change hex codes as desired
+        const brightColors = [
+            '#FF0000', // Red
+            '#00FF00', // Lime
+            '#0000FF', // Blue
+            '#FFFF00', // Yellow
+            '#FF00FF', // Magenta
+            '#00FFFF', // Cyan
+            '#FFA500', // Orange
+            '#FF4500', // OrangeRed
+            '#ADFF2F', // GreenYellow
+            '#FF69B4', // HotPink
+            '#1E90FF', // DodgerBlue
+        ];
+
+        const defaults = {
+            startVelocity: 45, // INCREASED VELOCITY: Particles shoot out faster
+            spread: 360,
+            ticks: 70,         // SLIGHTLY LONGER LASTING PARTICLES
+            zIndex: 10,
+            gravity: 0.8,      // SLIGHTLY LOWER GRAVITY: More floaty
+        };
+
+        // --- Modifications End ---
+
 
         function randomInRange(min, max) {
             return Math.random() * (max - min) + min;
@@ -474,11 +506,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const interval = setInterval(function() {
             const timeLeft = animationEnd - Date.now();
-            if (timeLeft <= 0) return clearInterval(interval);
-            const particleCount = 50 * (timeLeft / duration);
-            confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } }));
-            confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } }));
-        }, 250);
+
+            if (timeLeft <= 0) {
+                return clearInterval(interval);
+            }
+
+            // INCREASED PARTICLE COUNT BASE: Launch more particles per burst
+            const particleCount = 75 * (timeLeft / duration);
+
+            // Launch confetti bursts from two points
+            // Use the defined colors and add shapes
+            confetti(Object.assign({}, defaults, {
+                particleCount,
+                origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 },
+                colors: brightColors, // Use our vibrant color list
+                shapes: ['star', 'circle'], // Add stars and circles
+            }));
+            confetti(Object.assign({}, defaults, {
+                particleCount,
+                origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 },
+                colors: brightColors, // Use our vibrant color list
+                shapes: ['star', 'circle'], // Add stars and circles
+            }));
+        }, 250); // Interval between bursts remains the same
     }
 
     function revealRemainingGroups() {
