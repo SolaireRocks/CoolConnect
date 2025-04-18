@@ -183,7 +183,7 @@ h1 {
 #submit-guess {
     /* Default enabled style */
     background-color: #5a5a5a; /* Dark grey consistent with selected buttons */
-    color: white;
+    color: black;
     border-color: #4a4a4a; /* Slightly darker border */
     font-weight: bold;
 }
