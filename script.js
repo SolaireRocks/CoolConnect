@@ -15,27 +15,28 @@ document.addEventListener('DOMContentLoaded', () => {
     const MAX_SELECTED = 4;
     const TOTAL_ATTEMPTS = 4;
     const PUZZLE_FILE = 'puzzles.json';
-    const LOSE_FACE_DURATION = 2000;
-    const MESSAGE_CLEAR_DELAY = 1500;
+    const LOSE_FACE_DURATION = 1800;
+    const MESSAGE_CLEAR_DELAY = 1800;
+    const CORRECT_GUESS_FADE_DURATION = 700;
+    const REVEAL_STAGGER_DELAY = 250;
 
     // --- Game State Variables ---
     let selectedWords = [];
     let wordElements = {};
-    let currentPuzzleData = null; // { groups: [], date: "YYYY-MM-DD" }
+    let currentPuzzleData = null;
     let remainingAttempts = TOTAL_ATTEMPTS;
     let solvedGroups = [];
-    let incorrectGuesses = new Set(); // Still needed for "Already Guessed" feature
+    let incorrectGuesses = new Set();
     let isGameOver = false;
     let messageTimeoutId = null;
+    let isAnimating = false;
 
     // --- Local Storage Key ---
-    // Still used for saving/loading game progress (attempts, solved groups etc.)
     function getStorageKey(dateStr) {
         return `connectionsGameState_${dateStr}`;
     }
 
     // --- Date Formatting ---
-    // Still needed for puzzle loading and potentially GA event labels
     function getTodayDateString() {
         const today = new Date();
         const year = today.getFullYear();
@@ -44,12 +45,11 @@ document.addEventListener('DOMContentLoaded', () => {
         return `${year}-${month}-${day}`;
     }
 
-    // --- Local Storage Functions (for game state persistence) ---
-    // Keep these as they are for saving user's progress locally
+    // --- Local Storage Functions ---
     function saveGameState() {
         if (!currentPuzzleData || !currentPuzzleData.date) return;
 
-        const currentGridWords = Array.from(activeGridArea.querySelectorAll('.word-button:not(.removing)'))
+        const currentGridWords = Array.from(activeGridArea.querySelectorAll('.word-button:not(.fading-out):not(.removing)'))
                                       .map(btn => btn.textContent);
 
         const stateToSave = {
@@ -60,12 +60,11 @@ document.addEventListener('DOMContentLoaded', () => {
             incorrectGuesses: Array.from(incorrectGuesses),
             isGameOver: isGameOver,
             isWin: isGameOver ? (solvedGroups.length === 4) : null,
+            // selectedWords: selectedWords // Optional: Persist selection
         };
 
         try {
-            // Only save if localStorage is available and working
             localStorage.setItem(getStorageKey(currentPuzzleData.date), JSON.stringify(stateToSave));
-            // console.log("Game state saved for", currentPuzzleData.date); // Optional: Keep for debugging
         } catch (error) {
             console.error("Error saving game state to localStorage:", error);
         }
@@ -78,10 +77,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (savedStateJSON) {
                 const savedState = JSON.parse(savedStateJSON);
                 if (savedState && savedState.puzzleDate === dateStr) {
-                    // console.log("Found saved game state for", dateStr); // Optional: Keep for debugging
                     return savedState;
                 } else {
-                    // console.log("Saved state found, but for a different date. Ignoring."); // Optional: Keep for debugging
                     localStorage.removeItem(key);
                 }
             }
@@ -115,14 +112,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 // --- GA Event: Game Start ---
-                // Send event after puzzle is confirmed loaded for *today*
-                // This helps GA track sessions engaging with the *current* puzzle
-                 if (currentPuzzleData && currentPuzzleData.date === getTodayDateString() && !savedState?.isGameOver) {
-                    // Check if gtag function exists (added by the GA snippet)
+                if (currentPuzzleData && currentPuzzleData.date === getTodayDateString() && !savedState?.isGameOver) {
                      if (typeof gtag === 'function') {
-                         gtag('event', 'game_load_today', { // Use a descriptive event name
+                         gtag('event', 'game_load_today', {
                            'event_category': 'Game',
-                           'event_label': currentPuzzleData.date // Track which puzzle date loaded
+                           'event_label': currentPuzzleData.date
                          });
                          console.log("GA Event: game_load_today sent");
                      } else {
@@ -130,7 +124,6 @@ document.addEventListener('DOMContentLoaded', () => {
                      }
                  }
                 // --- End GA Event ---
-
 
             } else {
                 console.warn("Puzzle data for", todayStr, "not found or is invalid in puzzles.json.");
@@ -155,14 +148,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function initializeGame(isRestoring = false) {
         isGameOver = false;
+        isAnimating = false;
         selectedWords = [];
         wordElements = {};
         remainingAttempts = TOTAL_ATTEMPTS;
         solvedGroups = [];
-        incorrectGuesses = new Set(); // Reset incorrect guesses for a new game
+        incorrectGuesses = new Set();
 
         activeGridArea.innerHTML = '';
-        activeGridArea.classList.remove('game-over', 'game-won-hidden');
+        activeGridArea.classList.remove('game-over', 'game-won-hidden'); // Ensure hidden class is removed
         solvedGroupsArea.innerHTML = '';
         messageArea.textContent = '';
         messageArea.className = 'message';
@@ -180,9 +174,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!isRestoring) {
             saveGameState();
         }
-
-         // NOTE: The GA 'game_load_today' event is now triggered in loadPuzzleForToday
-         // after confirming the puzzle is valid for the current date.
     }
 
     function restoreGameFromState(savedState) {
@@ -190,38 +181,42 @@ document.addEventListener('DOMContentLoaded', () => {
         isGameOver = savedState.isGameOver;
         remainingAttempts = savedState.attempts;
         incorrectGuesses = new Set(savedState.incorrectGuesses || []);
+        // selectedWords = savedState.selectedWords || []; // Optional
         solvedGroups = currentPuzzleData.groups.filter(group =>
             savedState.solvedCategories.includes(group.category)
         );
-        solvedGroups.sort((a, b) => a.difficulty - b.difficulty);
-        renderSolvedGroupsArea();
+        renderSolvedGroupsArea(true);
 
         activeGridArea.innerHTML = '';
         wordElements = {};
-        populateGrid(savedState.gridWords);
+        populateGrid(savedState.gridWords); // Adjusts font size
+
+        // Restore selection visually if needed
+        // if (selectedWords.length > 0) { ... }
 
         updateAttemptsDisplay();
-        submitButton.disabled = true;
-        selectedWords = [];
+        submitButton.disabled = true; // Will be updated by enableGameControls if needed
 
         if (isGameOver) {
             disableGameControls();
             activeGridArea.classList.add('game-over');
             if (savedState.isWin) {
                 displayMessage("Congratulations! You found all groups!", "correct");
+                // Ensure grid is hidden immediately if loaded in won state
                 if (activeGridArea.querySelectorAll('.word-button').length === 0) {
-                   activeGridArea.classList.add('game-won-hidden');
+                    activeGridArea.classList.add('game-won-hidden');
                 } else {
-                     removeAllButtonsFromGrid();
+                     // Force remove buttons and hide grid if state mismatch somehow
+                     removeAllButtonsFromGrid(true);
+                     activeGridArea.classList.add('game-won-hidden');
                 }
-                // Optionally trigger fireworks again on reload if won?
-                // triggerFireworks();
             } else {
                  displayMessage("Game Over! Better luck next time.", "incorrect");
-                 revealRemainingGroups();
+                 revealRemainingGroups(true);
             }
         } else {
             enableGameControls();
+            submitButton.disabled = selectedWords.length !== MAX_SELECTED; // Set initial submit state correctly
              const solvedWords = new Set(solvedGroups.flatMap(g => g.words));
              savedState.gridWords.forEach(word => {
                 if (solvedWords.has(word) && wordElements[word]) {
@@ -229,10 +224,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
              });
         }
-         // NOTE: The GA 'game_load_today' event is now triggered in loadPuzzleForToday
+    }
+
+    function adjustButtonFontSize(button) {
+        button.classList.remove('small-text');
+        if (button.scrollWidth > (button.clientWidth + 1)) {
+            button.classList.add('small-text');
+        }
     }
 
     function populateGrid(words) {
+        const fragment = document.createDocumentFragment();
         words.forEach(word => {
             const isSolved = solvedGroups.some(group => group.words.includes(word));
             if (isSolved) return;
@@ -241,18 +243,26 @@ document.addEventListener('DOMContentLoaded', () => {
             button.textContent = word;
             button.classList.add('word-button');
             button.addEventListener('click', handleWordClick);
-            activeGridArea.appendChild(button);
+            fragment.appendChild(button);
             wordElements[word] = button;
+        });
+
+        activeGridArea.appendChild(fragment);
+
+        Object.values(wordElements).forEach(button => {
+             if(button.parentNode === activeGridArea) {
+                adjustButtonFontSize(button);
+             }
         });
     }
 
 
     function handleWordClick(event) {
-        if (isGameOver) return;
+        if (isGameOver || isAnimating) return;
         const button = event.target;
         const word = button.textContent;
 
-        if (button.disabled || button.classList.contains('removing')) return;
+        if (button.disabled || button.classList.contains('fading-out')) return;
 
         if (selectedWords.includes(word)) {
             selectedWords = selectedWords.filter(w => w !== word);
@@ -271,22 +281,30 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function handleSubmitGuess() {
-        if (isGameOver || selectedWords.length !== MAX_SELECTED) return;
+        if (isGameOver || isAnimating || selectedWords.length !== MAX_SELECTED) return;
+
+        isAnimating = true;
+        submitButton.disabled = true;
 
         const submittedSelection = [...selectedWords];
         const selectedButtons = submittedSelection.map(word => wordElements[word]).filter(Boolean);
         const guessId = getGuessId(submittedSelection);
 
+        if (messageArea.classList.contains('info') || messageArea.classList.contains('correct')) {
+            displayMessage("", "");
+        }
+
         if (incorrectGuesses.has(guessId)) {
             displayMessage("Already guessed!", "info");
             clearMessageWithDelay();
-            submitButton.disabled = true;
             selectedButtons.forEach(button => {
-                if (button && !button.classList.contains('removing')) {
+                if (button && !button.classList.contains('fading-out')) {
                     button.classList.add('shake');
                     setTimeout(() => { if(button) button.classList.remove('shake'); }, 300);
                 }
             });
+            isAnimating = false;
+            submitButton.disabled = false; // Re-enable submit as selection is still 4
             return;
         }
 
@@ -294,22 +312,43 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (correctGroup) {
              displayMessage("Correct!", "correct");
-             solvedGroups.push(correctGroup);
-             solvedGroups.sort((a, b) => a.difficulty - b.difficulty);
-             renderSolvedGroupsArea();
-             removeSolvedButtonsFromGrid(correctGroup.words);
+             selectedWords = []; // Clear selection state
+             selectedButtons.forEach(button => {
+                 button.classList.remove('selected');
+                 button.classList.add('fading-out'); // Start fade animation
+             });
 
-             selectedButtons.forEach(button => button.classList.remove('selected'));
-             selectedWords = [];
-             submitButton.disabled = true;
+             setTimeout(() => {
+                 solvedGroups.push(correctGroup);
+                 renderSolvedGroupsArea(); // Add & animate solved group
 
-             if (solvedGroups.length === 4) {
-                 endGame(true); // This will call GA event inside endGame
-             } else {
-                 saveGameState(); // Save progress
-             }
-        } else {
-            // Incorrect Guess
+                 // Remove faded buttons from DOM & memory
+                 submittedSelection.forEach(word => {
+                     const button = wordElements[word];
+                     if (button) {
+                         button.remove();
+                         delete wordElements[word];
+                     }
+                 });
+
+                 // Check for win condition *after* removing buttons
+                 if (solvedGroups.length === 4) {
+                     // **** ADDED THIS LINE ****
+                     activeGridArea.classList.add('game-won-hidden'); // Trigger grid collapse/fade
+                     // *************************
+                     setTimeout(() => {
+                        endGame(true); // Trigger rest of win sequence
+                        // isAnimating set false in endGame for win
+                     }, 100); // Small delay after adding class before rest of win logic
+                 } else {
+                     saveGameState(); // Save progress
+                     isAnimating = false; // Release lock for next guess
+                 }
+                 clearMessageWithDelay();
+
+             }, CORRECT_GUESS_FADE_DURATION); // Wait for fade
+
+        } else { // Incorrect Guess
             remainingAttempts--;
             updateAttemptsDisplay();
             incorrectGuesses.add(guessId);
@@ -333,19 +372,23 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             selectedButtons.forEach(button => {
-                if (button && !button.classList.contains('removing')) {
+                if (button && !button.classList.contains('fading-out')) {
                     button.classList.add('shake');
                     setTimeout(() => { if(button) button.classList.remove('shake'); }, 300);
                 }
             });
 
-             submitButton.disabled = true;
+            // Keep selection active
 
              if (remainingAttempts <= 0) {
-                endGame(false); // This will call GA event inside endGame
+                setTimeout(() => {
+                   endGame(false); // Trigger lose sequence
+                }, 400);
             } else {
                  clearMessageWithDelay();
-                 saveGameState(); // Save progress
+                 saveGameState();
+                 isAnimating = false;
+                 submitButton.disabled = false; // Re-enable submit as selection is still 4
             }
         }
     }
@@ -361,64 +404,31 @@ document.addEventListener('DOMContentLoaded', () => {
         ) || null;
     }
 
-    function renderSolvedGroupsArea() {
+    function renderSolvedGroupsArea(skipAnimation = false) {
         solvedGroups.sort((a, b) => a.difficulty - b.difficulty);
+        const currentScrollTop = solvedGroupsArea.scrollTop;
+
         solvedGroupsArea.innerHTML = '';
         solvedGroups.forEach(group => {
             const groupDiv = document.createElement('div');
             groupDiv.classList.add('solved-group', `difficulty-${group.difficulty}`);
             groupDiv.innerHTML = `<strong>${group.category}</strong><p>${group.words.join(', ')}</p>`;
             solvedGroupsArea.appendChild(groupDiv);
-        });
-    }
 
-    function removeSolvedButtonsFromGrid(wordsToRemove) {
-        let buttonsAnimatedOut = 0;
-        const totalToRemove = wordsToRemove.length;
-        let gridHidden = false;
-
-        wordsToRemove.forEach(word => {
-            const button = wordElements[word];
-            if (button) {
-                button.disabled = true;
-                button.classList.add('removing');
-
-                const handleRemoval = () => {
-                    button.remove();
-                    buttonsAnimatedOut++;
-                    if (buttonsAnimatedOut === totalToRemove && solvedGroups.length === 4 && !gridHidden) {
-                       if (activeGridArea.querySelectorAll('.word-button:not(.removing)').length === 0) {
-                            activeGridArea.classList.add('game-won-hidden');
-                            gridHidden = true;
-                       }
-                    }
-                };
-
-                button.addEventListener('transitionend', (event) => {
-                     if (event.propertyName === 'opacity' || event.propertyName === 'height') {
-                        handleRemoval();
-                    }
-                }, { once: true });
-
-                 setTimeout(() => {
-                     if (button.parentNode === activeGridArea) {
-                         handleRemoval();
-                     }
-                 }, 450);
-                delete wordElements[word];
+            if (!skipAnimation) {
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                         groupDiv.classList.add('visible');
+                    });
+                });
             } else {
-                 buttonsAnimatedOut++;
-                  if (buttonsAnimatedOut === totalToRemove && solvedGroups.length === 4 && !gridHidden) {
-                       if (activeGridArea.querySelectorAll('.word-button:not(.removing)').length === 0) {
-                           activeGridArea.classList.add('game-won-hidden');
-                            gridHidden = true;
-                       }
-                  }
+                groupDiv.classList.add('visible');
             }
         });
+        solvedGroupsArea.scrollTop = currentScrollTop;
     }
 
-    function removeAllButtonsFromGrid() {
+    function removeAllButtonsFromGrid(skipAnimation = false) {
         const buttons = activeGridArea.querySelectorAll('.word-button');
         buttons.forEach(button => {
              if (wordElements[button.textContent]) {
@@ -426,7 +436,7 @@ document.addEventListener('DOMContentLoaded', () => {
              }
              button.remove();
         });
-        activeGridArea.classList.add('game-won-hidden');
+        // Don't automatically add game-won-hidden here, let the calling function decide
     }
 
     function updateAttemptsDisplay() {
@@ -441,38 +451,41 @@ document.addEventListener('DOMContentLoaded', () => {
         deselectAllButton.disabled = true;
         shuffleButton.disabled = true;
         Object.values(wordElements).forEach(button => {
-            if (button && !button.classList.contains('removing')) {
+            if (button && !button.classList.contains('fading-out')) {
                button.disabled = true;
             }
          });
     }
 
     function enableGameControls() {
-        deselectAllButton.disabled = false;
-        shuffleButton.disabled = false;
-         Object.values(wordElements).forEach(button => {
-              if (button && !button.classList.contains('removing')) {
-                  button.disabled = false;
-              }
-          });
+        if (!isGameOver && !isAnimating) {
+            deselectAllButton.disabled = false;
+            shuffleButton.disabled = false;
+             Object.values(wordElements).forEach(button => {
+                  if (button && !button.classList.contains('fading-out')) {
+                      button.disabled = false;
+                  }
+              });
+              submitButton.disabled = selectedWords.length !== MAX_SELECTED;
+        } else {
+             disableGameControls();
+        }
     }
 
     function endGame(isWin) {
         if (isGameOver) return;
 
         isGameOver = true;
+        isAnimating = true;
         disableGameControls();
-        activeGridArea.classList.add('game-over');
+        activeGridArea.classList.add('game-over'); // Keep adding game-over for potential styling
 
-        // --- GA Event: Game Win / Loss ---
+        // --- GA Event ---
         const eventName = isWin ? 'game_win' : 'game_loss';
         const eventData = {
             'event_category': 'Game',
-            'event_label': currentPuzzleData?.date || 'unknown_date', // Use puzzle date if available
-             // Optional: Add attempts left on loss, or 0 on win
-            // 'value': isWin ? 0 : remainingAttempts
+            'event_label': currentPuzzleData?.date || 'unknown_date',
         };
-
         if (typeof gtag === 'function') {
             gtag('event', eventName, eventData);
             console.log(`GA Event: ${eventName} sent`);
@@ -481,71 +494,116 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         // --- End GA Event ---
 
-
         if (isWin) {
+            // .game-won-hidden is now added *before* endGame is called
             displayMessage("Congratulations! You found all groups!", "correct");
             triggerFireworks();
+            isAnimating = false; // Release lock, controls remain disabled
         } else {
             displayMessage("Game Over! Better luck next time.", "incorrect");
             loseOverlay.classList.add('visible');
             setTimeout(() => {
                 loseOverlay.classList.remove('visible');
                  setTimeout(() => {
-                      revealRemainingGroups();
-                 }, 500);
+                      revealRemainingGroups(); // Handles releasing lock
+                 }, 550);
             }, LOSE_FACE_DURATION);
         }
-         saveGameState(); // Save final game state locally
+         saveGameState();
     }
 
     function triggerFireworks() {
-        // Use the updated fireworks function from previous step
         if (typeof confetti !== 'function') {
              console.warn("Confetti function not found.");
              return;
          }
-        const duration = 8 * 1000;
+        const duration = 5 * 1000;
         const animationEnd = Date.now() + duration;
         const brightColors = ['#FF0000','#00FF00','#0000FF','#FFFF00','#FF00FF','#00FFFF','#FFA500','#FF4500','#ADFF2F','#FF69B4','#1E90FF'];
-        const defaults = { startVelocity: 45, spread: 360, ticks: 70, zIndex: 10, gravity: 0.8 };
+        const defaults = { startVelocity: 45, spread: 360, ticks: 70, zIndex: 10, gravity: 0.8, scalar: 0.9 };
 
         function randomInRange(min, max) { return Math.random() * (max - min) + min; }
 
         const interval = setInterval(function() {
             const timeLeft = animationEnd - Date.now();
             if (timeLeft <= 0) return clearInterval(interval);
-            const particleCount = 75 * (timeLeft / duration);
+            const particleCount = 60 * (timeLeft / duration);
             confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 }, colors: brightColors, shapes: ['star', 'circle'] }));
             confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 }, colors: brightColors, shapes: ['star', 'circle'] }));
         }, 250);
     }
 
-    function revealRemainingGroups() {
-         if (!currentPuzzleData) return;
+    function revealRemainingGroups(skipAnimation = false) {
+         if (!currentPuzzleData) {
+            isAnimating = false;
+            return;
+         }
          const solvedCategoryNames = new Set(solvedGroups.map(g => g.category));
          const groupsToReveal = currentPuzzleData.groups
             .filter(group => !solvedCategoryNames.has(group.category))
             .sort((a, b) => a.difficulty - b.difficulty);
 
-        if (groupsToReveal.length === 0 && solvedGroups.length < 4) return;
+        if (groupsToReveal.length === 0) {
+             if (activeGridArea.querySelectorAll('.word-button').length === 0) {
+                 // Ensure grid is hidden if already empty
+                 activeGridArea.classList.add('game-won-hidden');
+             }
+             isAnimating = false;
+             return;
+         }
 
-         groupsToReveal.forEach(group => {
-            if (!solvedCategoryNames.has(group.category)) {
-                 solvedGroups.push(group);
-                 solvedCategoryNames.add(group.category);
-            }
-            group.words.forEach(word => {
-                const button = wordElements[word];
-                if (button) {
-                    button.remove();
-                    delete wordElements[word];
-                }
-            });
+         Object.values(wordElements).forEach(button => {
+             if (button) button.disabled = true;
          });
-         renderSolvedGroupsArea();
-         if (activeGridArea.querySelectorAll('.word-button:not(.removing)').length === 0) {
-            activeGridArea.classList.add('game-won-hidden');
-        }
+
+         renderSolvedGroupsArea(true);
+
+         let revealedCount = 0;
+         groupsToReveal.forEach((group, index) => {
+            const revealDelay = skipAnimation ? 0 : index * REVEAL_STAGGER_DELAY;
+
+            setTimeout(() => {
+                if (!solvedCategoryNames.has(group.category)) {
+                     solvedGroups.push(group);
+                     solvedCategoryNames.add(group.category);
+
+                     const groupDiv = document.createElement('div');
+                     groupDiv.classList.add('solved-group', `difficulty-${group.difficulty}`);
+                     groupDiv.innerHTML = `<strong>${group.category}</strong><p>${group.words.join(', ')}</p>`;
+                     solvedGroupsArea.appendChild(groupDiv);
+
+                     if (!skipAnimation) {
+                        requestAnimationFrame(() => {
+                            requestAnimationFrame(() => {
+                                groupDiv.classList.add('visible');
+                            });
+                        });
+                     } else {
+                         groupDiv.classList.add('visible');
+                     }
+                 }
+
+                 group.words.forEach(word => {
+                     const button = wordElements[word];
+                     if (button) {
+                         button.remove();
+                         delete wordElements[word];
+                     }
+                 });
+
+                 revealedCount++;
+                 if (revealedCount === groupsToReveal.length) {
+                     // After last group, hide grid if empty
+                     if (activeGridArea.querySelectorAll('.word-button').length === 0) {
+                         activeGridArea.classList.add('game-won-hidden');
+                     }
+                     saveGameState();
+                     isAnimating = false;
+                     // Controls remain disabled
+                 }
+
+            }, revealDelay);
+         });
      }
 
     function displayMessage(msg, type) {
@@ -553,13 +611,15 @@ document.addEventListener('DOMContentLoaded', () => {
         messageArea.textContent = msg;
         messageArea.className = 'message';
         if (type) messageArea.classList.add(type);
+        messageArea.classList.remove('hidden');
     }
 
     function clearMessageWithDelay() {
         if (messageTimeoutId) clearTimeout(messageTimeoutId);
         messageTimeoutId = setTimeout(() => {
-            if (!isGameOver || (messageArea.textContent !== "Congratulations! You found all groups!" && messageArea.textContent !== "Game Over! Better luck next time.")) {
-                 displayMessage("", "");
+            const isEndGameMessage = messageArea.textContent === "Congratulations! You found all groups!" || messageArea.textContent === "Game Over! Better luck next time.";
+            if (!isEndGameMessage) {
+                 messageArea.classList.add('hidden');
             }
             messageTimeoutId = null;
         }, MESSAGE_CLEAR_DELAY);
@@ -573,7 +633,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function deselectAll() {
-        if (isGameOver) return;
+        if (isGameOver || isAnimating) return;
         selectedWords.forEach(word => {
             const button = wordElements[word];
             if (button) button.classList.remove('selected');
@@ -584,32 +644,40 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function shuffleGrid() {
-        if (isGameOver) return;
-        const currentButtons = Array.from(activeGridArea.querySelectorAll('.word-button:not(.removing)'));
+        if (isGameOver || isAnimating) return;
+        const currentButtons = Array.from(activeGridArea.querySelectorAll('.word-button:not(.fading-out)'));
         if (currentButtons.length === 0) return;
 
         const wordsToShuffle = currentButtons.map(btn => btn.textContent);
         shuffleArray(wordsToShuffle);
-
-        const fragment = document.createDocumentFragment();
-        const newWordElements = {};
+        const currentSelection = new Set(selectedWords);
 
         activeGridArea.innerHTML = '';
+        wordElements = {};
 
+        const fragment = document.createDocumentFragment();
         wordsToShuffle.forEach(word => {
             const button = document.createElement('button');
             button.textContent = word;
             button.classList.add('word-button');
-            if (selectedWords.includes(word)) button.classList.add('selected');
+            if (currentSelection.has(word)) {
+                 button.classList.add('selected');
+            }
             button.addEventListener('click', handleWordClick);
             fragment.appendChild(button);
-            newWordElements[word] = button;
+            wordElements[word] = button;
         });
 
         activeGridArea.appendChild(fragment);
-        wordElements = newWordElements;
+
+        Object.values(wordElements).forEach(button => {
+             if(button.parentNode === activeGridArea) {
+                adjustButtonFontSize(button);
+             }
+        });
+
         submitButton.disabled = selectedWords.length !== MAX_SELECTED;
-        saveGameState(); // Still save local state after shuffle
+        saveGameState();
      }
 
     // --- Event Listeners ---
