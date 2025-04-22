@@ -201,7 +201,7 @@ document.addEventListener('DOMContentLoaded', () => {
             disableGameControls();
             activeGridArea.classList.add('game-over');
             if (savedState.isWin) {
-                displayMessage("Congratulations! You found all groups!", "correct");
+                displayMessage("Congratulations! You are very smart! (and a little cutie)", "correct");
                 // Ensure grid is hidden immediately if loaded in won state
                 if (activeGridArea.querySelectorAll('.word-button').length === 0) {
                     activeGridArea.classList.add('game-won-hidden');
