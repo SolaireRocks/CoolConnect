@@ -111,23 +111,23 @@
   ],
    "2025-04-25": [
      {
-      "category": "DOG BREEDS",
-      "words": ["LABRADOR", "POODLE", "BEAGLE", "PUG"],
-      "difficulty": 0
-    },
-    {
-      "category": "FAST FOOD CHAINS",
-      "words": ["MCDONALDS", "SUBWAY", "TACO BELL", "KFC"],
+      "category": "THINGS THAT SHOULD NEVER BE CUT OR TRIMMED",
+      "words": ["BEARD", "BUSH", "HAIR", "PITS"],
       "difficulty": 1
     },
     {
-      "category": "PARTS OF A CAR",
-      "words": ["WHEEL", "ENGINE", "DOOR", "SEAT"],
+      "category": "THINGS BITEY LIKES TO SMACK OR SPANK",
+      "words": ["TITS", "TUSH", "CHEEK", "LEGS"],
       "difficulty": 2
     },
     {
-      "category": "SCHOOL SUBJECTS",
-      "words": ["MATH", "HISTORY", "SCIENCE", "ENGLISH"],
+      "category": "WHEN BITEY AND PANDA HAVE SEX IT IS...",
+      "words": ["MESSY", "LOUD", "HOT", "CRAZY"],
+      "difficulty": 0
+    },
+    {
+      "category": "THINGS BITEY LIKES TO LICK ON PANDA",
+      "words": ["FEET", "THIGH", "LABIA", "TONGUE"],
       "difficulty": 3
     }
   ],
